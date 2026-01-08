@@ -1,0 +1,15 @@
+# Test builds
+*.tar
+*.tar.gz
+*.tar.bz2
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
