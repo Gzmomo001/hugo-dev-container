@@ -1,0 +1,46 @@
+# Local Build Containerfile - Uses pre-downloaded Hugo binary
+# This is the fastest build method for users with slow GitHub access
+#
+# Usage:
+#   1. Download Hugo: ./scripts/download-hugo.sh
+#   2. Build: podman build -f Containerfile.local -t hugo-dev:latest .
+
+# Registry selection - can be overridden via --build-arg
+ARG IMAGE_REGISTRY="docker.io"
+
+FROM ${IMAGE_REGISTRY}/library/golang:1.23-alpine AS hugo_builder
+
+# Configure Alpine mirror BEFORE any apk operations
+RUN if [ "${ALPINE_MIRROR:-auto}" != "global" ]; then \
+        sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories; \
+    fi && \
+    apk update
+
+# Copy Hugo from local filesystem
+# This requires running ./scripts/download-hugo.sh first
+COPY hugo /usr/local/bin/hugo
+RUN chmod +x /usr/local/bin/hugo && hugo version
+
+# Final runtime image
+FROM ${IMAGE_REGISTRY}/library/alpine:3.20
+
+# Configure Alpine mirror BEFORE any apk operations
+RUN if [ "${ALPINE_MIRROR:-auto}" != "global" ]; then \
+        sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories; \
+    fi && \
+    apk update
+
+# Install git for lastmod feature and rsync for convenience
+RUN apk add --no-cache git rsync openssh-client
+
+# Copy Hugo from builder
+COPY --from=hugo_builder /usr/local/bin/hugo /usr/local/bin/hugo
+
+# Set up working directory
+WORKDIR /src
+
+# Expose Hugo dev server port
+EXPOSE 1313
+
+# Default to development server
+CMD ["hugo", "server", "-D", "--bind", "0.0.0.0"]
