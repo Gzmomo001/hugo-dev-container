@@ -4,13 +4,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a **development container** for Hugo Extended - not a Hugo site itself. It provides a containerized environment with Hugo Extended v0.152.2, designed to be used as a submodule in Hugo projects.
+This is a **development container** for Hugo Extended - not a Hugo site itself. It provides a containerized environment with Hugo Extended (latest from Alpine edge/community), designed to be used as a submodule in Hugo projects.
 
 ## Architecture
 
-- **Containerfile**: Multi-stage build using Alpine Linux
-  - Stage 1: Builds Hugo Extended from source using Go 1.23
-  - Stage 2: Minimal runtime with git, rsync, and openssh-client
+- **Containerfile**: Single-stage build using Alpine Linux
+  - Installs Hugo Extended from Alpine's edge/community repository
+  - Includes git, rsync, and openssh-client
 - **Scripts/**: Convenience wrappers for common Hugo operations via Podman
 
 ### Intended Usage Pattern
@@ -28,6 +28,11 @@ The Hugo project then uses the scripts from `hugo_dev/scripts/` to run Hugo in t
 From the parent Hugo project directory (after adding as submodule):
 
 ```bash
+# Using the smart build script (recommended - auto-detects best mirror)
+cd hugo_dev
+./scripts/build-with-mirror.sh
+
+# Or manual build
 podman build -t hugo-dev:latest -f hugo_dev/Containerfile .
 ```
 
@@ -67,10 +72,27 @@ podman run --rm -it -v "${PWD}:/src:z" hugo-dev:latest hugo
 
 - `HUGO_IMAGE`: Container image name (default: `hugo-dev:latest`)
 - `HUGO_PORT`: Port for dev server (default: `1313`)
+- `ALPINE_MIRROR`: Alpine mirror selection (default: `auto`, options: `global`)
 
 ## Key Features of the Container
 
-- Hugo Extended v0.152.2 with SCSS and image processing
+- Hugo Extended (from Alpine edge/community repository) with SCSS and image processing
 - Git integration for `.Lastmod` front matter
 - Live reload in development mode
 - Alpine-based for minimal size
+- Official Alpine packages (well-maintained)
+
+## How Hugo is Installed
+
+The container uses the official Alpine Linux package installation:
+
+```dockerfile
+apk add --no-cache --repository=https://dl-cdn.alpinelinux.org/alpine/edge/community hugo
+```
+
+**Benefits:**
+- Single-stage build (faster, simpler)
+- Official Alpine packages (well-maintained)
+- Automatic updates via Alpine edge/community repository
+- No GitHub dependencies during build
+- No Go compilation required

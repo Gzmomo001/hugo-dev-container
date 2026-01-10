@@ -3,7 +3,7 @@
 Containerized Hugo Extended development environment with Podman support.
 
 ## Version
-- Hugo Extended v0.152.2
+- Hugo Extended (latest from Alpine edge/community repository)
 
 ## Features
 - SCSS processing support
@@ -22,18 +22,9 @@ Containerized Hugo Extended development environment with Podman support.
    ```
 
 2. Build container image:
-
-   **Option A: Standard build (from source)**
    ```bash
    cd hugo_dev
    ./scripts/build-with-mirror.sh
-   ```
-
-   **Option B: Local build (fast, recommended for China)**
-   ```bash
-   cd hugo_dev
-   ./scripts/download-hugo.sh  # Download Hugo first
-   podman build -f Containerfile.local -t hugo-dev:latest .
    ```
 
 3. Use convenience scripts:
@@ -57,7 +48,7 @@ podman run --rm -it -p 1313:1313 -v "${PWD}:/src:z" hugo-dev:latest
 
 ### Production Build
 ```bash
-podman run --rm -it -v "${PWD}:/src:z" hugo-dev:latest
+podman run --rm -it -v "${PWD}:/src:z" hugo-dev:latest hugo
 ```
 
 ## Requirements
@@ -66,43 +57,18 @@ podman run --rm -it -v "${PWD}:/src:z" hugo-dev:latest
 
 ## Build Optimization
 
-### ⚠️ Important: GitHub Access in China
-
-**Problem:** GitHub access is extremely slow or unstable in China (few KB/s or timeouts).
-This affects all build methods that fetch from GitHub.
-
-**Recommended Solution:** Use **Option B (Local build)** above - it's 10-100x faster.
-
 ### Automatic Mirror Detection
 
 The container includes automatic mirror detection for faster builds in China:
 
 - **Auto-detection**: Detects your location and automatically uses the fastest mirror
   - China: Uses `docker.1ms.run` for images and Aliyun mirrors for Alpine packages
-  - China: Uses `goproxy.cn` for Go module downloads
-  - International: Uses official `docker.io` registry and Go proxy
+  - International: Uses official `docker.io` registry and Alpine CDN
 
 - **Smart build script**:
   ```bash
   ./scripts/build-with-mirror.sh
   ```
-
-### Build Methods Comparison
-
-| Method | Speed | Reliability | Best For |
-|--------|-------|-------------|----------|
-| **Local build** (Containerfile.local) | ⚡ Fastest (~30s) | ✅ 100% | China users |
-| Standard build (Containerfile) | 🐌 Slow (5-10 min) | ⚠️ Unstable | Non-China |
-
-**Why local build is faster:**
-- No GitHub access during build
-- Uses your host's network (may have proxy/VPN)
-- Just copies pre-downloaded binary
-
-**Why standard build is slow:**
-- Must clone Hugo source from GitHub (~2MB, slow)
-- Or download pre-built binary from GitHub (~19MB, very slow)
-- SSL errors and timeouts are common
 
 ### Manual Mirror Selection
 
@@ -133,44 +99,42 @@ podman build --build-arg IMAGE_REGISTRY=docker.io \
   -t hugo-dev:latest -f Containerfile .
 ```
 
-### Offline Build (When GitHub is Slow)
+## How It Works
 
-If GitHub downloads are too slow during automated build, you can download Hugo manually:
+This container uses the official Alpine Linux package for Hugo Extended with intelligent mirror selection:
 
-```bash
-# 1. Download Hugo binary manually
-./scripts/download-hugo.sh
-
-# 2. Build container (will skip download step)
-podman build -t hugo-dev:latest -f Containerfile .
+```dockerfile
+# Automatically selects mirror based on ALPINE_MIRROR build arg
+if [ "${ALPINE_MIRROR:-auto}" = "global" ]; then
+    REPO_URL="https://dl-cdn.alpinelinux.org/alpine/edge/community";
+else
+    REPO_URL="https://mirrors.aliyun.com/alpine/edge/community";
+fi
+apk add --no-cache --repository="${REPO_URL}" hugo
 ```
 
-**Why use offline build?**
-- Bypasses slow GitHub access in container
-- Uses your host machine's network (may have proxy/VPN)
-- Faster than downloading during container build
+**Supported Alpine Mirrors (for China):**
+- **Aliyun (默认)**: `https://mirrors.aliyun.com/alpine/`
+- **Tsinghua**: `https://mirrors.tuna.tsinghua.edu.cn/alpine/`
+- **USTC**: `https://mirrors.ustc.edu.cn/alpine/`
 
-### Performance Notes
+**Benefits:**
+- Single-stage build (faster, simpler)
+- Official Alpine packages (well-maintained)
+- Automatic updates via Alpine edge/community repository
+- **Smart mirror selection for faster builds in China**
+- No GitHub dependencies during build
+- No Go compilation required
+
+## Performance Notes
 
 The mirror optimization speeds up:
-1. Base image pulling (golang:1.23-alpine, alpine:3.20)
+1. Base image pulling (alpine:3.20)
 2. Alpine package installation (apk add)
-3. Go module downloads for Hugo build (via goproxy.cn)
-
-**Key improvements:**
-- Alpine mirrors are configured **before** any package downloads, eliminating slow CDN access
-- Go proxy (goproxy.cn) enables fast Hugo module downloads
-- Local build option completely bypasses GitHub access issues
-
-**Build strategy recommendations:**
-1. **China users**: Use `Containerfile.local` + `download-hugo.sh` (fastest, ~30s)
-2. **International users**: Use `Containerfile` + `build-with-mirror.sh` (standard)
-3. **If GitHub is slow**: Always use local build method
 
 **Expected build times:**
-- China (local build): ~30 seconds
-- China (standard build): 5-10 minutes (may fail due to GitHub)
-- International (standard build): 2-5 minutes
+- China (with mirror): ~1-2 minutes
+- International (official): ~1-2 minutes
 
 ## License
 MIT License
