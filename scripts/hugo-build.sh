@@ -5,4 +5,5 @@ IMAGE_NAME="${HUGO_IMAGE:-hugo-dev:latest}"
 
 podman run --rm -it \
   -v "${PWD}:/src:z" \
-  "${IMAGE_NAME}"
+  "${IMAGE_NAME}" \
+  hugo

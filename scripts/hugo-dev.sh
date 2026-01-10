@@ -10,4 +10,4 @@ podman run --rm -it \
   -v "${PWD}:/src:z" \
   --name "${CONTAINER_NAME}" \
   "${IMAGE_NAME}" \
-  server -D --bind 0.0.0.0
+  hugo server -D --bind 0.0.0.0

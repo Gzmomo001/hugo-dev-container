@@ -10,4 +10,4 @@ echo "Building Hugo site..."
 podman run --rm -it \
   -v "${PWD}:/src:z" \
   "${IMAGE_NAME}" \
-  --cleanDestinationDir
+  hugo --cleanDestinationDir
